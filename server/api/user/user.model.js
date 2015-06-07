@@ -2,7 +2,7 @@
 
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
-var crypto = require('crypto');
+var bcrypt = require('bcrypt');
 
 var UserSchema = new Schema({
   name: String,
@@ -93,7 +93,6 @@ var validatePresenceOf = function(value) {
 UserSchema
   .pre('save', function(next) {
     if (!this.isNew) return next();
-
     if (!validatePresenceOf(this.hashedPassword))
       next(new Error('Invalid password'));
     else
@@ -112,7 +111,7 @@ UserSchema.methods = {
    * @api public
    */
   authenticate: function(plainText) {
-    return this.encryptPassword(plainText) === this.hashedPassword;
+    return bcrypt.compareSync(plainText, this.hashedPassword);
   },
 
   /**
@@ -122,20 +121,19 @@ UserSchema.methods = {
    * @api public
    */
   makeSalt: function() {
-    return crypto.randomBytes(16).toString('base64');
+    return bcrypt.genSaltSync(10);
   },
 
   /**
    * Encrypt password
-   *
+   
    * @param {String} password
    * @return {String}
    * @api public
    */
   encryptPassword: function(password) {
     if (!password || !this.salt) return '';
-    var salt = new Buffer(this.salt, 'base64');
-    return crypto.pbkdf2Sync(password, salt, 10000, 64).toString('base64');
+    return bcrypt.hashSync(password, this.salt);
   }
 };
 
